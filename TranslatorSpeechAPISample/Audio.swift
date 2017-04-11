@@ -53,14 +53,14 @@ class Audio: NSObject, AVAudioPlayerDelegate, AVAudioRecorderDelegate {
     
     func read () -> AVAudioPCMBuffer {
         
-        let path = Bundle.main.path(forResource: "voice2", ofType: "wav")
-        let url = URL(fileURLWithPath: path!)
-        
+//        テスト用
+//        let path = Bundle.main.path(forResource: "voice2", ofType: "wav")
+//        let url = URL(fileURLWithPath: path!)
         var audioFileBuffer : AVAudioPCMBuffer
         var audioFile : AVAudioFile?
         
         do {
-            audioFile = try AVAudioFile.init(forReading: url, commonFormat: .pcmFormatInt16, interleaved: false)
+            audioFile = try AVAudioFile.init(forReading: url!, commonFormat: .pcmFormatInt16, interleaved: false)
             print(audioFile!.processingFormat)
             
         }catch{
