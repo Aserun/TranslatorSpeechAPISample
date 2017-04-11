@@ -1,0 +1,22 @@
+PODS:
+  - Starscream (1.1.3)
+
+DEPENDENCIES:
+  - Starscream (from `https://github.com/daltoniam/Starscream`, branch `swift3`)
+
+EXTERNAL SOURCES:
+  Starscream:
+    :branch: swift3
+    :git: https://github.com/daltoniam/Starscream
+
+CHECKOUT OPTIONS:
+  Starscream:
+    :commit: b1472f2a99a747ffda35c43ac4eb58b73c59722a
+    :git: https://github.com/daltoniam/Starscream
+
+SPEC CHECKSUMS:
+  Starscream: d662732354b40dd19ed1ece3e3c44c80b536b83c
+
+PODFILE CHECKSUM: 3c738f063c7faa92e378e88a33b9f786488af53f
+
+COCOAPODS: 1.2.0

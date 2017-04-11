@@ -1,2 +1,2 @@
 # TranslatorSpeechAPISample
-Translator Speech API をSwift3で使用するサンプル
+Microsoft Speech Translation API を Swift3 から使用するサンプル
