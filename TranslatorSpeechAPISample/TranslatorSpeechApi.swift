@@ -22,7 +22,7 @@ class TranslatorResponse {
 }
 
 class TranslatorSpeechApi: NSObject, WebSocketDelegate {
-    
+
     fileprivate let key = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     
     fileprivate var socket: WebSocket!
@@ -63,41 +63,37 @@ class TranslatorSpeechApi: NSObject, WebSocketDelegate {
         socket.connect()
     }
     
-    fileprivate func setBuffer(header: inout [UInt8], offset: Int, num: Int) -> Int{
-        (0..<4).forEach { header[$0 + offset] = UInt8((num >> ($0 * 8)) & 0xff) }
-        return offset + 4
-    }
-
-    fileprivate func setBuffer(header: inout [UInt8], offset: Int, str: String) -> Int{
-        str.utf8.enumerated().forEach { header[$0 + offset] = $1 }
-        return offset + str.utf8.count
+    //Riff Chunk
+    fileprivate func riff() -> Data {
+        let size = 4
+        let buffer = Buffer(size: size + 8)
+        buffer.append("RIFF")
+        buffer.append(int: size)
+        buffer.append("WAVE")
+        return buffer.data
     }
     
-    fileprivate func createHeader(length: Int) -> [UInt8]{
-        var header: [UInt8] = [UInt8](repeating : 0, count : 44)
-        let dataSize = length + 44
-        let samlpleRate = 16000
-        let byteRate = 32000
-
-        var offset = 0
-        offset = setBuffer(header: &header, offset: offset, str: "RIFF")
-        offset = setBuffer(header: &header, offset: offset, num: dataSize)
-        offset = setBuffer(header: &header, offset: offset, str: "WAVEfmt ")
-
-        header[16] = 16
-        header[20] = 1
-        header[22] = 1
-        offset += 8
-        
-        offset = setBuffer(header: &header, offset: offset, num: samlpleRate)
-        offset = setBuffer(header: &header, offset: offset, num: byteRate)
-        header[32] = 2
-        header[34] = 16
-        offset += 4
-
-        offset = setBuffer(header: &header, offset: offset, str: "data")
-        _ = setBuffer(header: &header, offset: offset, num: length)
-        return header
+    // Wave Format Chunk
+    fileprivate func waveFormat() -> Data {
+        let size = 16
+        let buffer = Buffer(size: size + 8)
+        buffer.append("fmt ")
+        buffer.append(int: size)
+        buffer.append(short: 1) // Audio Format
+        buffer.append(short: 1) // Channels
+        buffer.append(int: 16000) // SamplePerSecond
+        buffer.append(int: 32000) // BytesPerSecond
+        buffer.append(short: 2) // BlockAlign
+        buffer.append(short: 16) //  BitsPerSample
+        return buffer.data
+    }
+    
+    // Wave Data Chunk (Header)
+    fileprivate func dataHeader(count: Int) -> Data {
+        let buffer = Buffer(size: 8)
+        buffer.append("data")
+        buffer.append(int: count)
+        return buffer.data
     }
     
     // MARK: - WebSocketDelegate
@@ -107,21 +103,13 @@ class TranslatorSpeechApi: NSObject, WebSocketDelegate {
         let channels = UnsafeBufferPointer(start: audioFileBuffer?.int16ChannelData, count: 1)
         let length = Int((audioFileBuffer?.frameCapacity)! * (audioFileBuffer?.format.streamDescription.pointee.mBytesPerFrame)!)
         let audioData = NSData(bytes: channels[0], length: length)
-        
-        var header = createHeader(length: length)
-        socket.write(data: NSData(bytes: &header, length: header.count) as Data)
-        let sep = 6144
-        let num = length / sep
-        if length > 64632 {
-            for i in 1...(num + 1) {
-                socket.write(data: audioData.subdata(with: NSRange(location: (i - 1) * sep, length: sep)))
-            }
-            var raw_b = 0b0
-            let data_b = NSMutableData(bytes: &raw_b, length: MemoryLayout<NSInteger>.size)
-            for _ in 0...11000 {
-                data_b.append(&raw_b, length: MemoryLayout<NSInteger>.size)
-            }
-            socket.write(data: data_b as Data)
+
+        if length > 50000 {
+            socket.write(data: riff())
+            socket.write(data: waveFormat())
+            socket.write(data: dataHeader(count: length))
+            socket.write(data: audioData as Data)
+            socket.write(data: Buffer(size: 100000).data)
         } else {
             socket.disconnect()
         }
@@ -201,5 +189,35 @@ class TranslatorSpeechApi: NSObject, WebSocketDelegate {
             }
         })
         task.resume()
+    }
+}
+
+class Buffer {
+    
+    var offset = 0
+    var buffer: [UInt8]
+    
+    init(size: Int) {
+        buffer = [UInt8](repeating : 0, count : size)
+    }
+    
+    func append(short: Int16) {
+        let num16: Int = Int(short)
+        (0..<2).forEach { buffer[$0 + offset] = UInt8((num16 >> ($0 * 8)) & 0xff) }
+        offset += 2
+    }
+
+    func append(int: Int) {
+        (0..<4).forEach { buffer[$0 + offset] = UInt8((int >> ($0 * 8)) & 0xff) }
+        offset += 4
+    }
+    
+    func append(_ str: String) {
+        str.utf8.enumerated().forEach { buffer[$0 + offset] = $1 }
+        offset += str.utf8.count
+    }
+    
+    var data: Data {
+        return Data(bytes: buffer)
     }
 }
